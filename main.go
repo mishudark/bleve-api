@@ -14,8 +14,8 @@ func main() {
 	r := gin.Default()
 	r.POST("/api/search/:index", Search)
 	r.POST("/api/index/:index/:docId", Index)
-	r.PUT("/api/index/:index/:docId", Index)
-	//r.DELETE("/api/:index/:id", Delete)
+	r.PUT("/api/update/:index/:docId", Index)
+	r.DELETE("/api/delete/:index/:docId", Delete)
 	r.Run(":8080")
 }
 
@@ -122,4 +122,33 @@ func Search(c *gin.Context) {
 
 	response, err := json.Marshal(&reply)
 	c.JSON(200, gin.H{"status": string(response[:])})
+}
+
+func Delete(c *gin.Context) {
+	indexName := c.Params.ByName("index")
+	index, err := bleve.Open(indexName)
+
+	if err != nil {
+		c.JSON(400, gin.H{"status": "Error opening index"})
+		return
+	}
+
+	defer func() {
+		if index != nil {
+			index.Close()
+		}
+	}()
+
+	docId := c.Params.ByName("docId")
+	if docId == "" {
+		c.JSON(400, gin.H{"status": "Missing id"})
+		return
+	}
+
+	err = index.Delete(docId)
+	if err != nil {
+		c.JSON(400, gin.H{"status": "Error deleting document"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
 }
